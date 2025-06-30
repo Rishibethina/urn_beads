@@ -5,43 +5,51 @@ format: html
 execute: 
   echo: false
 ---
-
-```{r}
+```{r all-in-one, echo=TRUE, message=FALSE, warning=FALSE}
 library(tidyverse)
 library(tidymodels)
 library(broom)
-```
-Data science often involves analyzing categorical outcomes and their relationships with measurable features. In this study, we use a sample of 50 beads drawn from an urn containing red and white beads to estimate the proportion of red beads in the population.A potential weakness in our model is that if the sample is not truly representative of the urn’s current bead composition, or if unmeasured factors influence bead color, our estimates and inferences may be biased or invalid.Using a sample of 50 beads drawn from the urn, we estimate that approximately 34% are red, with a 95% credible interval ranging from 21% to 47%, reflecting the uncertainty in our estimate.Our estimates might be wrong because the sample may not perfectly represent the entire urn, especially if beads were added or removed after sampling, or if the sampling process was biased. Additionally, factors like measurement errors or assumptions of independence could affect accuracy. Given these uncertainties, a wider confidence interval—such as from 14% to 54%—might better capture the true proportion of red beads, reflecting our cautious skepticism about the data and process.
-
-
-
-```{r}
-library(dplyr)
 library(knitr)
+library(ggplot2)
 
-# Assume tidy_fit is your tidy() output
+# Replace this with your actual data loading step
+# Example dummy data (replace with your own)
+set.seed(123)
+your_data <- tibble(
+  color = factor(sample(c("red", "white"), 50, replace = TRUE)),
+  size = factor(sample(c("small", "large"), 50, replace = TRUE))
+)
+
+# Fit logistic regression model predicting color by size
+fit <- glm(color ~ size, data = your_data, family = binomial)
+
+# Tidy the model output
+tidy_fit <- tidy(fit)
+
+# Select columns for the table
 tidy_fit_subset <- tidy_fit %>%
   select(term, estimate, std.error, p.value)
 
-# Create a clean table with 3 decimals
-kable(tidy_fit_subset, digits = 3, caption = "Model Coefficients Summary")
+# Display model coefficients in a nice table
+print(kable(tidy_fit_subset, digits = 3, caption = "Model Coefficients Summary"))
 
-```
+# Create predicted probabilities for each size group
+pred_data <- your_data %>%
+  distinct(size) %>%
+  mutate(
+    predicted_prob_red = predict(fit, newdata = ., type = "response")
+  )
 
-```{r}
-library(ggplot2)
-
-# Generate the base plot
-p <- plot_predictions(fit_color, type = "prob", condition = "group")
-
-# Customize with title, subtitle, caption, and axis labels
-p + 
-  ggtitle("Predicted Probability of Bead Color by Group",
-          subtitle = "Size group helps predict the likelihood of beads being red or white") +
+# Plot predicted probability of red bead by size group
+ggplot(pred_data, aes(x = size, y = predicted_prob_red, fill = size)) +
+  geom_col(show.legend = FALSE) +
+  ylim(0, 1) +
   labs(
-    caption = "Data source: Urn bead sampling study",
+    title = "Predicted Probability of Bead Color by Size",
+    subtitle = "Size group helps predict the likelihood of beads being red or white",
     x = "Bead Size Group",
-    y = "Predicted Probability"
+    y = "Predicted Probability of Red",
+    caption = "Data source: Urn bead sampling study"
   ) +
   theme_minimal() +
   theme(
@@ -50,20 +58,3 @@ p +
     plot.caption = element_text(size = 9, face = "italic"),
     axis.title = element_text(size = 12)
   )
-
-```
-
-```{r}
-library(broom)
-library(dplyr)
-
-# Fit a model, example:
-fit <- glm(color ~ size, data = your_data, family = binomial)
-
-# Tidy the model output
-tidy_fit <- tidy(fit)
-
-# Select columns to view
-tidy_fit %>% select(term, estimate, std.error, p.value)
-
-```
